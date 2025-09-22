@@ -1,0 +1,29 @@
+{
+  "name": "secure-communication-protocol",
+  "version": "1.0.0",
+  "description": "A secure communication protocol with ECDH key exchange and AES-256-GCM encryption",
+  "main": "src/protocol.js",
+  "scripts": {
+    "demo": "node src/demo.js",
+    "test": "jest",
+    "test:watch": "jest --watch"
+  },
+  "keywords": [
+    "cryptography",
+    "security",
+    "protocol",
+    "encryption",
+    "ECDH",
+    "AES-GCM",
+    "secure-communication"
+  ],
+  "author": "Protocol Developer",
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {
+    "jest": "^29.7.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
