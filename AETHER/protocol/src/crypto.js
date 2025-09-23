@@ -55,10 +55,7 @@ function deriveKeys(sharedSecret, salt = PROTOCOL_CONSTANTS.SALT, info = PROTOCO
  */
 function encrypt(plaintext, key, iv = null) {
   const ivBuffer = iv || crypto.randomBytes(PROTOCOL_CONSTANTS.IV_LENGTH);
-
-  // Use legacy API for compatibility
-  const cipher = crypto.createCipher('aes-256-gcm', key);
-  cipher.setAAD(Buffer.alloc(0)); // No additional authenticated data
+  const cipher = crypto.createCipheriv('aes-256-gcm', key, ivBuffer);
 
   let encrypted = cipher.update(plaintext, 'utf8', 'hex');
   encrypted += cipher.final('hex');
@@ -76,10 +73,8 @@ function encrypt(plaintext, key, iv = null) {
  * Decrypt data using AES-256-GCM
  */
 function decrypt(encrypted, key, iv, tag) {
-  // Use legacy API for compatibility
-  const decipher = crypto.createDecipher('aes-256-gcm', key);
+  const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
   decipher.setAuthTag(tag);
-  decipher.setAAD(Buffer.alloc(0)); // No additional authenticated data
 
   let decrypted = decipher.update(encrypted, 'hex', 'utf8');
   decrypted += decipher.final('utf8');

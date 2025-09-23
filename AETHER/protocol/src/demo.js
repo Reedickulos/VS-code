@@ -1,11 +1,17 @@
 #!/usr/bin/env node
-
 /**
  * Secure Communication Protocol Demonstration
  */
 
 const { SecureCommunicationProtocol } = require('./protocol');
-const { createMessage, parseMessage, MESSAGE_TYPES } = require('./crypto');
+const {
+  createMessage,
+  parseMessage,
+
+  deriveSharedSecret,
+  deriveKeys,
+  MESSAGE_TYPES
+} = require('./crypto');
 const crypto = require('crypto');
 
 class ProtocolDemo {
@@ -109,32 +115,18 @@ class ProtocolDemo {
     this.server.remotePublicKey = clientKeyPair.publicKey;
 
     // Derive shared secrets
-    const clientSharedSecret = crypto.diffieHellman({
-      privateKey: clientKeyPair.privateKey,
-      publicKey: serverKeyPair.publicKey
-    });
-
-    const serverSharedSecret = crypto.diffieHellman({
-      privateKey: serverKeyPair.privateKey,
-      publicKey: clientKeyPair.publicKey
-    });
+    const clientSharedSecret = deriveSharedSecret(
+      clientKeyPair.privateKey,
+      serverKeyPair.publicKey
+    );
+    const serverSharedSecret = deriveSharedSecret(
+      serverKeyPair.privateKey,
+      clientKeyPair.publicKey
+    );
 
     // Set session keys
-    this.client.sessionKeys = crypto.hkdfSync(
-      'sha256',
-      clientSharedSecret,
-      Buffer.from('SCP-Protocol-Salt-2024'),
-      Buffer.from('SCP-Key-Derivation'),
-      64
-    );
-
-    this.server.sessionKeys = crypto.hkdfSync(
-      'sha256',
-      serverSharedSecret,
-      Buffer.from('SCP-Protocol-Salt-2024'),
-      Buffer.from('SCP-Key-Derivation'),
-      64
-    );
+    this.client.sessionKeys = deriveKeys(clientSharedSecret);
+    this.server.sessionKeys = deriveKeys(serverSharedSecret);
 
     // Update states
     this.client.state = 'connected';
@@ -169,13 +161,25 @@ class ProtocolDemo {
           timestamp: Date.now()
         };
 
-        // Use simple encryption for demo (in real implementation would use proper crypto)
-        const encryptedMessage = Buffer.from(JSON.stringify(messageData)).toString('base64');
-        const decryptedMessage = JSON.parse(Buffer.from(encryptedMessage, 'base64').toString());
+        // Encrypt and send message from client
+        const clientMessage = createMessage(
+          MESSAGE_TYPES.DATA,
+          this.client.sequenceNumber++,
+          messageData,
+          this.client.sessionKeys.encryptionKey,
+          this.client.sessionKeys.hmacKey
+        );
 
-        console.log(`📥 Server received: ${decryptedMessage.payload}`);
+        // Decrypt message on server
+        const { payload: decryptedPayload } = parseMessage(
+          clientMessage,
+          this.server.sessionKeys.encryptionKey,
+          this.server.sessionKeys.hmacKey
+        );
+
+        console.log(`📥 Server received: ${decryptedPayload.payload}`);
         this.messages.push(`Client TX: ${message}`);
-        this.messages.push(`Server RX: ${decryptedMessage.payload}`);
+        this.messages.push(`Server RX: ${decryptedPayload.payload}`);
 
         console.log('✅ Message sent and acknowledged');
 
@@ -250,5 +254,3 @@ async function main() {
 if (require.main === module) {
     main().catch(console.error);
 }
-
-module.exports = ProtocolDemo;
